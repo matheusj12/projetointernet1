@@ -78,7 +78,8 @@ export default function Catalog() {
 
         // Upload photo if new file selected
         if (photoFile) {
-            const fileName = `catalog/${Date.now()}_${Math.random().toString(36).slice(2)}_${photoFile.name}`;
+            const sanitizedName = photoFile.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
+            const fileName = `catalog/${Date.now()}_${Math.random().toString(36).slice(2)}_${sanitizedName}`;
             const { error: uploadError } = await supabase.storage.from('photos').upload(fileName, photoFile);
             if (!uploadError) {
                 const { data } = supabase.storage.from('photos').getPublicUrl(fileName);

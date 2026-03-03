@@ -73,7 +73,8 @@ export default function PhotoGallery() {
         // Upload photos
         const urls: string[] = [];
         for (const file of photoFiles) {
-            const fileName = `diary/${Date.now()}_${Math.random().toString(36).slice(2)}_${file.name}`;
+            const sanitizedName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
+            const fileName = `diary/${Date.now()}_${Math.random().toString(36).slice(2)}_${sanitizedName}`;
             const { error } = await supabase.storage.from('photos').upload(fileName, file);
             if (!error) {
                 const { data: urlData } = supabase.storage.from('photos').getPublicUrl(fileName);
