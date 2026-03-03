@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { logActivity } from '../lib/activityLog';
 import { exportToExcel } from '../lib/exportExcel';
-import { Plus, Edit2, Trash2, Download, Search, Package } from 'lucide-react';
+import { Plus, Edit2, Trash2, Download, Search, Package, X, Filter } from 'lucide-react';
 
 interface CatalogItem {
     id: string;
@@ -14,8 +14,6 @@ interface CatalogItem {
     category: string;
     created_at: string;
 }
-
-const CATEGORIES = ['Cabos', 'Conectores', 'Access Points', 'Switches', 'Patch Panel', 'Tomadas/Espelhos', 'Eletrodutos', 'Ferragens', 'Outros'];
 
 export default function Catalog() {
     const { user } = useAuth();
@@ -36,6 +34,12 @@ export default function Catalog() {
         setItems(data || []);
         setLoading(false);
     };
+
+    // Categorias dinâmicas extraídas do banco
+    const categories = useMemo(() => {
+        const cats = [...new Set(items.map(i => i.category).filter(Boolean))];
+        return cats.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    }, [items]);
 
     const showToast = (msg: string, type = 'success') => {
         setToast({ msg, type });
@@ -79,7 +83,7 @@ export default function Catalog() {
 
     const handleExport = () => {
         exportToExcel(
-            items.map(i => ({
+            filtered.map(i => ({
                 Nome: i.name,
                 Descrição: i.description || '',
                 Unidade: i.unit,
@@ -91,10 +95,23 @@ export default function Catalog() {
         );
     };
 
-    const filtered = items.filter(i =>
-        (!search || i.name.toLowerCase().includes(search.toLowerCase())) &&
-        (!filterCat || i.category === filterCat)
-    );
+    // Pesquisa case-insensitive em nome, descrição e categoria
+    const normalize = (str: string) => str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    const filtered = useMemo(() => {
+        const term = normalize(search);
+        return items.filter(i => {
+            const matchSearch = !term ||
+                normalize(i.name).includes(term) ||
+                normalize(i.description || '').includes(term) ||
+                normalize(i.category || '').includes(term);
+            const matchCat = !filterCat || i.category === filterCat;
+            return matchSearch && matchCat;
+        });
+    }, [items, search, filterCat]);
+
+    const clearFilters = () => { setSearch(''); setFilterCat(''); };
+    const hasFilters = search || filterCat;
 
     return (
         <div className="fade-in">
@@ -106,16 +123,58 @@ export default function Catalog() {
                 </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
-                <div style={{ position: 'relative', flex: '1', minWidth: '200px' }}>
+            {/* Barra de pesquisa melhorada */}
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ position: 'relative', flex: '1', minWidth: '250px' }}>
                     <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                    <input className="form-input" placeholder="Buscar item..." value={search} onChange={e => setSearch(e.target.value)}
-                        style={{ paddingLeft: '40px' }} />
+                    <input className="form-input"
+                        placeholder="Buscar por nome, descrição ou categoria..."
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        style={{ paddingLeft: '40px', paddingRight: search ? '36px' : '12px' }} />
+                    {search && (
+                        <button onClick={() => setSearch('')}
+                            style={{
+                                position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)',
+                                background: 'rgba(248,113,113,0.15)', border: 'none', borderRadius: '50%',
+                                width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                cursor: 'pointer', color: 'var(--accent-red)'
+                            }}>
+                            <X size={14} />
+                        </button>
+                    )}
                 </div>
-                <select className="form-select" value={filterCat} onChange={e => setFilterCat(e.target.value)} style={{ width: 'auto', minWidth: '150px' }}>
-                    <option value="">Todas categorias</option>
-                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Filter size={16} color="var(--text-muted)" />
+                    <select className="form-select" value={filterCat} onChange={e => setFilterCat(e.target.value)}
+                        style={{ width: 'auto', minWidth: '180px' }}>
+                        <option value="">Todas categorias ({items.length})</option>
+                        {categories.map(c => (
+                            <option key={c} value={c}>
+                                {c} ({items.filter(i => i.category === c).length})
+                            </option>
+                        ))}
+                    </select>
+                </div>
+                {hasFilters && (
+                    <button className="btn btn-ghost btn-sm" onClick={clearFilters}
+                        style={{ color: 'var(--accent-red)', whiteSpace: 'nowrap' }}>
+                        <X size={14} /> Limpar filtros
+                    </button>
+                )}
+            </div>
+
+            {/* Contador de resultados */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', fontSize: '13px', color: 'var(--text-muted)' }}>
+                <span>{filtered.length} de {items.length} item(ns)</span>
+                <span>•</span>
+                <span>Total comprado: <strong style={{ color: 'var(--text-primary)' }}>{filtered.reduce((s, i) => s + i.quantity_purchased, 0).toLocaleString('pt-BR')}</strong> unidades</span>
+                {filterCat && (
+                    <>
+                        <span>•</span>
+                        <span className="badge badge-blue" style={{ fontSize: '11px' }}>{filterCat}</span>
+                    </>
+                )}
             </div>
 
             {loading ? (
@@ -123,7 +182,12 @@ export default function Catalog() {
             ) : filtered.length === 0 ? (
                 <div className="empty-state">
                     <Package size={48} />
-                    <p>Nenhum item cadastrado</p>
+                    <p>{hasFilters ? 'Nenhum item encontrado com os filtros aplicados' : 'Nenhum item cadastrado'}</p>
+                    {hasFilters && (
+                        <button className="btn btn-ghost btn-sm" onClick={clearFilters} style={{ marginTop: '8px' }}>
+                            Limpar filtros
+                        </button>
+                    )}
                 </div>
             ) : (
                 <div className="table-container">
@@ -160,10 +224,6 @@ export default function Catalog() {
                 </div>
             )}
 
-            <div style={{ marginTop: '12px', fontSize: '13px', color: 'var(--text-muted)' }}>
-                {filtered.length} item(ns) • Total comprado: {filtered.reduce((s, i) => s + i.quantity_purchased, 0)} unidades
-            </div>
-
             {showModal && (
                 <div className="modal-overlay" onClick={() => setShowModal(false)}>
                     <div className="modal slide-in" onClick={e => e.stopPropagation()}>
@@ -198,7 +258,7 @@ export default function Catalog() {
                                 <label className="form-label">Categoria</label>
                                 <select className="form-select" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
                                     <option value="">Selecione...</option>
-                                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
                             </div>
                         </div>
@@ -214,3 +274,4 @@ export default function Catalog() {
         </div>
     );
 }
+
