@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { logActivity } from '../lib/activityLog';
-import { Plus, ArrowLeftRight, Send, CheckCircle, ChevronDown, ChevronUp, Camera } from 'lucide-react';
+import { Plus, ArrowLeftRight, Send, CheckCircle, ChevronDown, ChevronUp, Camera, Trash2 } from 'lucide-react';
 
 interface CatalogItem { id: string; name: string; unit: string; }
 interface Exchange {
@@ -106,6 +106,21 @@ export default function Exchanges() {
         fetchAll();
     };
 
+    const handleDelete = async (id: number) => {
+        if (!confirm('Tem certeza que deseja excluir esta troca?')) return;
+
+        const { error } = await supabase.from('exchanges').delete().eq('id', id);
+        if (error) {
+            showToast('Erro ao excluir troca', 'error');
+            return;
+        }
+
+        logActivity(user!.id, 'delete', 'exchanges', String(id));
+        showToast('Troca excluída com sucesso');
+        setExpandedId(null);
+        fetchAll();
+    };
+
     const statusBadge = (s: string) => {
         const map: Record<string, { cls: string; label: string }> = {
             pending: { cls: 'badge-yellow', label: '⏳ Pendente' },
@@ -118,17 +133,25 @@ export default function Exchanges() {
     };
 
     const statusActions = (ex: Exchange) => {
-        if (ex.status === 'pending') return (
-            <button className="btn btn-primary btn-sm" onClick={e => { e.stopPropagation(); updateStatus(ex, 'sent'); }}>
-                <Send size={14} /> Marcar Enviado
-            </button>
+        return (
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {ex.status === 'pending' && (
+                    <button className="btn btn-primary btn-sm" onClick={e => { e.stopPropagation(); updateStatus(ex, 'sent'); }}>
+                        <Send size={14} /> Marcar Enviado
+                    </button>
+                )}
+                {ex.status === 'sent' && (
+                    <button className="btn btn-success btn-sm" onClick={e => { e.stopPropagation(); updateStatus(ex, 'received'); }}>
+                        <CheckCircle size={14} /> Item Recebido
+                    </button>
+                )}
+                {user?.role === 'admin' && (
+                    <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger-color)', padding: '6px' }} onClick={e => { e.stopPropagation(); handleDelete(ex.id); }} title="Excluir Troca">
+                        <Trash2 size={16} />
+                    </button>
+                )}
+            </div>
         );
-        if (ex.status === 'sent') return (
-            <button className="btn btn-success btn-sm" onClick={e => { e.stopPropagation(); updateStatus(ex, 'received'); }}>
-                <CheckCircle size={14} /> Item Recebido
-            </button>
-        );
-        return null;
     };
 
     const formatDate = (d: string) => new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
