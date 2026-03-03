@@ -1,19 +1,18 @@
-node_modules\ndist\n.env\n.env.local\ndatabase_setup.sql
+# Dependencies
 node_modules
-node_modules
-node_modules
-node_modules
-node_modules
-node_modules
-node_modules
-node_modules
-node_modules
-node_modules
-node_modules
-node_modules
-node_modules
-node_modules
-node_modules
-node_modules
-node_modules
-node_modules
+
+# Build output
+dist
+
+# Environment variables
+.env
+.env.local
+
+# Database setup (contains credentials)
+database_setup.sql
+
+# Scripts with sensitive keys
+insert_products.mjs
+
+# PDF files
+*.pdf
