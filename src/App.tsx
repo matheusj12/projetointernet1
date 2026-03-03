@@ -8,6 +8,7 @@ import People from './pages/People';
 import Receipts from './pages/Receipts';
 import Withdrawals from './pages/Withdrawals';
 import SupplierReturns from './pages/SupplierReturns';
+import UserManagement from './pages/UserManagement';
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -33,6 +34,7 @@ function AppContent() {
       case 'receipts': return <Receipts />;
       case 'withdrawals': return <Withdrawals />;
       case 'supplier-returns': return <SupplierReturns />;
+      case 'users': return <UserManagement />;
       default: return <Dashboard />;
     }
   };

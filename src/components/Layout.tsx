@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../lib/auth';
 import {
     LayoutDashboard, Package, Users, PackagePlus, PackageMinus,
-    RotateCcw, LogOut, Menu, X, ChevronRight
+    RotateCcw, LogOut, Menu, X, ChevronRight, Shield
 } from 'lucide-react';
 import './Layout.css';
 
@@ -63,6 +63,17 @@ export default function Layout({ children, currentPage, onNavigate }: LayoutProp
                             {currentPage === item.id && <ChevronRight size={16} className="nav-arrow" />}
                         </button>
                     ))}
+                    {user?.role === 'admin' && (
+                        <button
+                            className={`nav-item ${currentPage === 'users' ? 'active' : ''}`}
+                            onClick={() => { onNavigate('users'); setSidebarOpen(false); }}
+                            style={{ marginTop: '8px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}
+                        >
+                            <Shield size={20} />
+                            <span>Usuários</span>
+                            {currentPage === 'users' && <ChevronRight size={16} className="nav-arrow" />}
+                        </button>
+                    )}
                 </nav>
 
                 <div className="sidebar-footer">
