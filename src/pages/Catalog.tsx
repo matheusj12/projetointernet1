@@ -12,6 +12,7 @@ interface CatalogItem {
     description: string;
     unit: string;
     quantity_purchased: number;
+    unit_price?: number;
     category: string;
     created_at: string;
 }
@@ -25,7 +26,7 @@ export default function Catalog() {
     const [historyItem, setHistoryItem] = useState<CatalogItem | null>(null);
     const [search, setSearch] = useState('');
     const [filterCat, setFilterCat] = useState('');
-    const [form, setForm] = useState({ name: '', description: '', unit: 'un', quantity_purchased: 0, category: '' });
+    const [form, setForm] = useState({ name: '', description: '', unit: 'un', quantity_purchased: 0, category: '', unit_price: 0 });
     const [toast, setToast] = useState<{ msg: string; type: string } | null>(null);
 
     useEffect(() => { fetchItems(); }, []);
@@ -50,13 +51,13 @@ export default function Catalog() {
 
     const openNew = () => {
         setEditing(null);
-        setForm({ name: '', description: '', unit: 'un', quantity_purchased: 0, category: '' });
+        setForm({ name: '', description: '', unit: 'un', quantity_purchased: 0, category: '', unit_price: 0 });
         setShowModal(true);
     };
 
     const openEdit = (item: CatalogItem) => {
         setEditing(item);
-        setForm({ name: item.name, description: item.description || '', unit: item.unit, quantity_purchased: item.quantity_purchased, category: item.category || '' });
+        setForm({ name: item.name, description: item.description || '', unit: item.unit, quantity_purchased: item.quantity_purchased, category: item.category || '', unit_price: item.unit_price || 0 });
         setShowModal(true);
     };
 
@@ -89,7 +90,9 @@ export default function Catalog() {
                 Nome: i.name,
                 Descrição: i.description || '',
                 Unidade: i.unit,
+                'Valor Unitário': i.unit_price || 0,
                 'Qtd Comprada': i.quantity_purchased,
+                'Valor Total': (i.unit_price || 0) * i.quantity_purchased,
                 Categoria: i.category || '',
             })),
             'catalogo_compras',
@@ -171,6 +174,8 @@ export default function Catalog() {
                 <span>{filtered.length} de {items.length} item(ns)</span>
                 <span>•</span>
                 <span>Total comprado: <strong style={{ color: 'var(--text-primary)' }}>{filtered.reduce((s, i) => s + i.quantity_purchased, 0).toLocaleString('pt-BR')}</strong> unidades</span>
+                <span>•</span>
+                <span>Valor Total: <strong style={{ color: 'var(--text-primary)' }}>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(filtered.reduce((s, i) => s + ((i.unit_price || 0) * i.quantity_purchased), 0))}</strong></span>
                 {filterCat && (
                     <>
                         <span>•</span>
@@ -198,7 +203,9 @@ export default function Catalog() {
                             <tr>
                                 <th>Nome</th>
                                 <th>Unidade</th>
+                                <th>Valor Unit.</th>
                                 <th>Qtd Comprada</th>
+                                <th>Valor Total</th>
                                 <th>Categoria</th>
                                 <th style={{ width: '100px' }}>Ações</th>
                             </tr>
@@ -211,7 +218,9 @@ export default function Catalog() {
                                         {item.description && <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{item.description}</div>}
                                     </td>
                                     <td>{item.unit}</td>
+                                    <td>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.unit_price || 0)}</td>
                                     <td><strong>{item.quantity_purchased}</strong></td>
+                                    <td>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((item.unit_price || 0) * item.quantity_purchased)}</td>
                                     <td>{item.category && <span className="badge badge-blue">{item.category}</span>}</td>
                                     <td>
                                         <div style={{ display: 'flex', gap: '4px' }}>
@@ -257,12 +266,18 @@ export default function Catalog() {
                                     <input className="form-input" type="number" min="0" value={form.quantity_purchased} onChange={e => setForm({ ...form, quantity_purchased: parseInt(e.target.value) || 0 })} />
                                 </div>
                             </div>
-                            <div className="form-group">
-                                <label className="form-label">Categoria</label>
-                                <select className="form-select" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
-                                    <option value="">Selecione...</option>
-                                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label className="form-label">Valor Unitário (R$)</label>
+                                    <input className="form-input" type="number" step="0.01" min="0" value={form.unit_price} onChange={e => setForm({ ...form, unit_price: parseFloat(e.target.value) || 0 })} />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Categoria</label>
+                                    <select className="form-select" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
+                                        <option value="">Selecione...</option>
+                                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                </div>
                             </div>
                         </div>
                         <div className="modal-actions">
