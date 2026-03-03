@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../lib/auth';
 import {
     LayoutDashboard, Package, Users, PackagePlus, PackageMinus,
-    RotateCcw, LogOut, Menu, X, ChevronRight, Shield, ArrowLeftRight, Camera, Image as ImageIcon
+    RotateCcw, LogOut, Menu, X, ChevronRight, Shield, ArrowLeftRight, Image as ImageIcon
 } from 'lucide-react';
 import './Layout.css';
 

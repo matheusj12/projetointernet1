@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { logActivity } from '../lib/activityLog';
-import { Plus, ArrowLeftRight, Send, CheckCircle, ChevronDown, ChevronUp, Camera, Package } from 'lucide-react';
+import { Plus, ArrowLeftRight, Send, CheckCircle, ChevronDown, ChevronUp, Camera } from 'lucide-react';
 
 interface CatalogItem { id: string; name: string; unit: string; }
 interface Exchange {

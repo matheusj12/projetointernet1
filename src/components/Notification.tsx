@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext, useCallback, type ReactNode } from 'react';
+import { useState, createContext, useContext, useCallback, type ReactNode } from 'react';
 import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-react';
 
 interface Toast {
@@ -69,7 +69,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
                 position: 'fixed', bottom: '24px', right: '24px', zIndex: 9999,
                 display: 'flex', flexDirection: 'column-reverse', gap: '8px', maxWidth: '380px',
             }}>
-                {toasts.map((toast, idx) => (
+                {toasts.map((toast) => (
                     <div key={toast.id} style={{
                         display: 'flex', alignItems: 'center', gap: '10px',
                         padding: '14px 16px', borderRadius: '10px',

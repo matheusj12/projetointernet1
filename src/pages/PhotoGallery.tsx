@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { logActivity } from '../lib/activityLog';
-import { Plus, Camera, Calendar, MapPin, User, Trash2, ChevronDown, ChevronUp, ImageIcon } from 'lucide-react';
+import { Plus, Camera, Calendar, User, Trash2, ChevronDown, ChevronUp, ImageIcon } from 'lucide-react';
 
 interface Person { id: string; name: string; }
 interface PhotoEntry {
@@ -109,7 +109,6 @@ export default function PhotoGallery() {
     const filtered = entries.filter(e => !filterTech || e.technician_id === filterTech);
 
     const formatDate = (d: string) => new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-    const formatDateShort = (d: string) => new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 
     // Group by date
     const grouped = filtered.reduce<Record<string, PhotoEntry[]>>((acc, e) => {
