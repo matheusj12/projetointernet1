@@ -13,6 +13,7 @@ interface CatalogItem {
     unit: string;
     quantity_purchased: number;
     unit_price?: number;
+    total_price?: number;
     category: string;
     created_at: string;
 }
@@ -26,7 +27,7 @@ export default function Catalog() {
     const [historyItem, setHistoryItem] = useState<CatalogItem | null>(null);
     const [search, setSearch] = useState('');
     const [filterCat, setFilterCat] = useState('');
-    const [form, setForm] = useState({ name: '', description: '', unit: 'un', quantity_purchased: 0, category: '', unit_price: 0 });
+    const [form, setForm] = useState({ name: '', description: '', unit: 'un', quantity_purchased: 0, category: '', unit_price: 0, total_price: 0 });
     const [toast, setToast] = useState<{ msg: string; type: string } | null>(null);
 
     useEffect(() => { fetchItems(); }, []);
@@ -51,13 +52,13 @@ export default function Catalog() {
 
     const openNew = () => {
         setEditing(null);
-        setForm({ name: '', description: '', unit: 'un', quantity_purchased: 0, category: '', unit_price: 0 });
+        setForm({ name: '', description: '', unit: 'un', quantity_purchased: 0, category: '', unit_price: 0, total_price: 0 });
         setShowModal(true);
     };
 
     const openEdit = (item: CatalogItem) => {
         setEditing(item);
-        setForm({ name: item.name, description: item.description || '', unit: item.unit, quantity_purchased: item.quantity_purchased, category: item.category || '', unit_price: item.unit_price || 0 });
+        setForm({ name: item.name, description: item.description || '', unit: item.unit, quantity_purchased: item.quantity_purchased, category: item.category || '', unit_price: item.unit_price || 0, total_price: item.total_price || ((item.unit_price || 0) * item.quantity_purchased) });
         setShowModal(true);
     };
 
@@ -92,7 +93,7 @@ export default function Catalog() {
                 Unidade: i.unit,
                 'Valor Unitário': i.unit_price || 0,
                 'Qtd Comprada': i.quantity_purchased,
-                'Valor Total': (i.unit_price || 0) * i.quantity_purchased,
+                'Valor Total': i.total_price || ((i.unit_price || 0) * i.quantity_purchased),
                 Categoria: i.category || '',
             })),
             'catalogo_compras',
@@ -175,7 +176,7 @@ export default function Catalog() {
                 <span>•</span>
                 <span>Total comprado: <strong style={{ color: 'var(--text-primary)' }}>{filtered.reduce((s, i) => s + i.quantity_purchased, 0).toLocaleString('pt-BR')}</strong> unidades</span>
                 <span>•</span>
-                <span>Valor Total: <strong style={{ color: 'var(--text-primary)' }}>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(filtered.reduce((s, i) => s + ((i.unit_price || 0) * i.quantity_purchased), 0))}</strong></span>
+                <span>Valor Total: <strong style={{ color: 'var(--text-primary)' }}>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(filtered.reduce((s, i) => s + (i.total_price || ((i.unit_price || 0) * i.quantity_purchased)), 0))}</strong></span>
                 {filterCat && (
                     <>
                         <span>•</span>
@@ -220,7 +221,7 @@ export default function Catalog() {
                                     <td>{item.unit}</td>
                                     <td>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.unit_price || 0)}</td>
                                     <td><strong>{item.quantity_purchased}</strong></td>
-                                    <td>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((item.unit_price || 0) * item.quantity_purchased)}</td>
+                                    <td>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.total_price || ((item.unit_price || 0) * item.quantity_purchased))}</td>
                                     <td>{item.category && <span className="badge badge-blue">{item.category}</span>}</td>
                                     <td>
                                         <div style={{ display: 'flex', gap: '4px' }}>
@@ -263,14 +264,27 @@ export default function Catalog() {
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Quantidade Comprada *</label>
-                                    <input className="form-input" type="number" min="0" value={form.quantity_purchased} onChange={e => setForm({ ...form, quantity_purchased: parseInt(e.target.value) || 0 })} />
+                                    <input className="form-input" type="number" min="0" value={form.quantity_purchased} onChange={e => {
+                                        const qty = parseInt(e.target.value) || 0;
+                                        setForm({ ...form, quantity_purchased: qty, total_price: parseFloat((qty * form.unit_price).toFixed(2)) });
+                                    }} />
                                 </div>
                             </div>
                             <div className="form-row">
                                 <div className="form-group">
                                     <label className="form-label">Valor Unitário (R$)</label>
-                                    <input className="form-input" type="number" step="0.01" min="0" value={form.unit_price} onChange={e => setForm({ ...form, unit_price: parseFloat(e.target.value) || 0 })} />
+                                    <input className="form-input" type="number" step="0.01" min="0" value={form.unit_price} onChange={e => {
+                                        const up = parseFloat(e.target.value) || 0;
+                                        setForm({ ...form, unit_price: up, total_price: parseFloat((form.quantity_purchased * up).toFixed(2)) });
+                                    }} />
                                 </div>
+                                <div className="form-group">
+                                    <label className="form-label">Valor Total (R$) *</label>
+                                    <input className="form-input" type="number" step="0.01" min="0" value={form.total_price} onChange={e => setForm({ ...form, total_price: parseFloat(e.target.value) || 0 })} />
+                                    <small style={{ color: 'var(--text-muted)', fontSize: '11px', marginTop: '4px', display: 'block' }}>Permite ajustar centavos da Nota Fiscal</small>
+                                </div>
+                            </div>
+                            <div className="form-row">
                                 <div className="form-group">
                                     <label className="form-label">Categoria</label>
                                     <select className="form-select" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
