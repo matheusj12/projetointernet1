@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { logActivity } from '../lib/activityLog';
 import { exportToExcel } from '../lib/exportExcel';
-import { Plus, Edit2, Trash2, Download, Search, Package, X, Filter, History } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Download, Package, X, Filter, History, Camera } from 'lucide-react';
 import ItemHistory from '../components/ItemHistory';
 
 interface CatalogItem {
@@ -14,6 +14,7 @@ interface CatalogItem {
     quantity_purchased: number;
     unit_price?: number;
     total_price?: number;
+    image_url?: string;
     category: string;
     created_at: string;
 }
@@ -27,8 +28,11 @@ export default function Catalog() {
     const [historyItem, setHistoryItem] = useState<CatalogItem | null>(null);
     const [search, setSearch] = useState('');
     const [filterCat, setFilterCat] = useState('');
-    const [form, setForm] = useState({ name: '', description: '', unit: 'un', quantity_purchased: 0, category: '', unit_price: 0, total_price: 0 });
+    const [form, setForm] = useState({ name: '', description: '', unit: 'un', quantity_purchased: 0, category: '', unit_price: 0, total_price: 0, image_url: '' });
     const [toast, setToast] = useState<{ msg: string; type: string } | null>(null);
+    const [photoFile, setPhotoFile] = useState<File | null>(null);
+    const [photoPreview, setPhotoPreview] = useState<string>('');
+    const fileRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => { fetchItems(); }, []);
 
@@ -52,33 +56,59 @@ export default function Catalog() {
 
     const openNew = () => {
         setEditing(null);
-        setForm({ name: '', description: '', unit: 'un', quantity_purchased: 0, category: '', unit_price: 0, total_price: 0 });
+        setForm({ name: '', description: '', unit: 'un', quantity_purchased: 0, category: '', unit_price: 0, total_price: 0, image_url: '' });
+        setPhotoFile(null);
+        setPhotoPreview('');
         setShowModal(true);
     };
 
     const openEdit = (item: CatalogItem) => {
         setEditing(item);
-        setForm({ name: item.name, description: item.description || '', unit: item.unit, quantity_purchased: item.quantity_purchased, category: item.category || '', unit_price: item.unit_price || 0, total_price: item.total_price || ((item.unit_price || 0) * item.quantity_purchased) });
+        setForm({ name: item.name, description: item.description || '', unit: item.unit, quantity_purchased: item.quantity_purchased, category: item.category || '', unit_price: item.unit_price || 0, total_price: item.total_price || ((item.unit_price || 0) * item.quantity_purchased), image_url: item.image_url || '' });
+        setPhotoFile(null);
+        setPhotoPreview(item.image_url || '');
         setShowModal(true);
     };
 
     const handleSave = async () => {
-        if (!form.name.trim()) return;
+        if (!form.name.trim()) { showToast('Informe o nome', 'error'); return; }
+        setLoading(true);
+
+        let uploadedUrl = form.image_url;
+
+        // Upload photo if new file selected
+        if (photoFile) {
+            const fileName = `catalog/${Date.now()}_${Math.random().toString(36).slice(2)}_${photoFile.name}`;
+            const { error: uploadError } = await supabase.storage.from('photos').upload(fileName, photoFile);
+            if (!uploadError) {
+                const { data } = supabase.storage.from('photos').getPublicUrl(fileName);
+                uploadedUrl = data.publicUrl;
+            } else {
+                showToast('Erro ao fazer upload da foto', 'error');
+                setLoading(false);
+                return;
+            }
+        }
+
         if (editing) {
-            await supabase.from('catalog_items').update(form).eq('id', editing.id);
-            logActivity(user!.id, 'update', 'catalog_items', editing.id, { name: form.name });
-            showToast('Item atualizado!');
+            const oldItem = items.find(i => i.id === editing.id);
+            const { error } = await supabase.from('catalog_items')
+                .update({ ...form, image_url: uploadedUrl }).eq('id', editing.id).select().single();
+            if (error) { showToast('Erro ao editar', 'error'); setLoading(false); return; }
+            logActivity(user!.id, 'update', 'catalog_items', editing.id, { before: oldItem, after: form });
+            showToast('Item atualizado');
         } else {
-            const { data } = await supabase.from('catalog_items').insert(form).select().single();
-            if (data) logActivity(user!.id, 'create', 'catalog_items', data.id, { name: form.name });
-            showToast('Item cadastrado!');
+            const { data, error } = await supabase.from('catalog_items').insert([{ ...form, image_url: uploadedUrl }]).select().single();
+            if (error) { showToast('Erro ao salvar', 'error'); setLoading(false); return; }
+            logActivity(user!.id, 'create', 'catalog_items', data.id, form);
+            showToast('Item salvo');
         }
         setShowModal(false);
         fetchItems();
     };
 
     const handleDelete = async (item: CatalogItem) => {
-        if (!confirm(`Excluir "${item.name}"?`)) return;
+        if (!confirm(`Excluir "${item.name}" ? `)) return;
         await supabase.from('catalog_items').delete().eq('id', item.id);
         logActivity(user!.id, 'delete', 'catalog_items', item.id, { name: item.name });
         showToast('Item removido!', 'error');
@@ -202,6 +232,7 @@ export default function Catalog() {
                     <table>
                         <thead>
                             <tr>
+                                <th style={{ width: '40px' }}>Foto</th>
                                 <th>Nome</th>
                                 <th>Unidade</th>
                                 <th>Valor Unit.</th>
@@ -214,6 +245,17 @@ export default function Catalog() {
                         <tbody>
                             {filtered.map(item => (
                                 <tr key={item.id}>
+                                    <td>
+                                        {item.image_url ? (
+                                            <a href={item.image_url} target="_blank" rel="noopener noreferrer">
+                                                <img src={item.image_url} alt="" style={{ width: '36px', height: '36px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border-color)' }} />
+                                            </a>
+                                        ) : (
+                                            <div style={{ width: '36px', height: '36px', borderRadius: '4px', background: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)' }}>
+                                                <Camera size={14} color="var(--text-muted)" />
+                                            </div>
+                                        )}
+                                    </td>
                                     <td>
                                         <div style={{ fontWeight: 500 }}>{item.name}</div>
                                         {item.description && <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{item.description}</div>}
@@ -240,16 +282,43 @@ export default function Catalog() {
             {showModal && (
                 <div className="modal-overlay" onClick={() => setShowModal(false)}>
                     <div className="modal slide-in" onClick={e => e.stopPropagation()}>
-                        <h2>{editing ? 'Editar Item' : 'Novo Item'}</h2>
+                        <h2>{editing ? '📝 Editar Item' : '📦 Novo Item'}</h2>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                            <div className="form-group">
-                                <label className="form-label">Nome do Item *</label>
-                                <input className="form-input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ex: Cabo UTP CAT.6" autoFocus />
+                            <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                    <div className="form-group">
+                                        <label className="form-label">Nome do Item *</label>
+                                        <input className="form-input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} autoFocus />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Descrição</label>
+                                        <textarea className="form-textarea" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+                                    </div>
+                                </div>
+                                <div className="form-group" style={{ width: '120px' }}>
+                                    <label className="form-label">Foto do Produto</label>
+                                    <div className="photo-upload" onClick={() => fileRef.current?.click()} style={{ height: '120px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '1px dashed var(--border-color)', borderRadius: 'var(--radius-md)', background: 'var(--bg-primary)', overflow: 'hidden' }}>
+                                        <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => {
+                                            if (e.target.files && e.target.files[0]) {
+                                                setPhotoFile(e.target.files[0]);
+                                                setPhotoPreview(URL.createObjectURL(e.target.files[0]));
+                                            }
+                                        }} />
+                                        {photoPreview ? (
+                                            <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                                                <img src={photoPreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                <button onClick={(e) => { e.stopPropagation(); setPhotoFile(null); setPhotoPreview(''); setForm({ ...form, image_url: '' }); }} style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(255,0,0,0.8)', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>×</button>
+                                            </div>
+                                        ) : (
+                                            <div style={{ color: 'var(--text-muted)', textAlign: 'center' }}>
+                                                <Camera size={24} style={{ margin: '0 auto 4px' }} />
+                                                <span style={{ fontSize: '11px' }}>Adicionar</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
-                            <div className="form-group">
-                                <label className="form-label">Descrição</label>
-                                <textarea className="form-textarea" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Especificações, marca, modelo..." />
-                            </div>
+
                             <div className="form-row">
                                 <div className="form-group">
                                     <label className="form-label">Unidade</label>
@@ -309,7 +378,6 @@ export default function Catalog() {
                     onClose={() => setHistoryItem(null)}
                 />
             )}
-
             {toast && <div className={`toast toast-${toast.type}`}>{toast.msg}</div>}
         </div>
     );
