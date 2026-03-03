@@ -91,17 +91,29 @@ export default function Catalog() {
             }
         }
 
+        // Build payload with only columns that exist in catalog_items table
+        // (total_price is computed in UI but not a DB column)
+        const payload = {
+            name: form.name,
+            description: form.description,
+            unit: form.unit,
+            quantity_purchased: form.quantity_purchased,
+            unit_price: form.unit_price,
+            category: form.category,
+            image_url: uploadedUrl,
+        };
+
         if (editing) {
             const oldItem = items.find(i => i.id === editing.id);
             const { error } = await supabase.from('catalog_items')
-                .update({ ...form, image_url: uploadedUrl }).eq('id', editing.id).select().single();
+                .update(payload).eq('id', editing.id).select().single();
             if (error) { showToast('Erro ao editar', 'error'); setLoading(false); return; }
-            logActivity(user!.id, 'update', 'catalog_items', editing.id, { before: oldItem, after: form });
+            logActivity(user!.id, 'update', 'catalog_items', editing.id, { before: oldItem, after: payload });
             showToast('Item atualizado');
         } else {
-            const { data, error } = await supabase.from('catalog_items').insert([{ ...form, image_url: uploadedUrl }]).select().single();
+            const { data, error } = await supabase.from('catalog_items').insert([payload]).select().single();
             if (error) { showToast('Erro ao salvar', 'error'); setLoading(false); return; }
-            logActivity(user!.id, 'create', 'catalog_items', data.id, form);
+            logActivity(user!.id, 'create', 'catalog_items', data.id, payload);
             showToast('Item salvo');
         }
         setShowModal(false);
