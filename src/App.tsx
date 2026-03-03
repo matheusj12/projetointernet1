@@ -9,6 +9,9 @@ import Receipts from './pages/Receipts';
 import Withdrawals from './pages/Withdrawals';
 import SupplierReturns from './pages/SupplierReturns';
 import UserManagement from './pages/UserManagement';
+import Exchanges from './pages/Exchanges';
+import PhotoGallery from './pages/PhotoGallery';
+import { NotificationProvider } from './components/Notification';
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -35,6 +38,8 @@ function AppContent() {
       case 'withdrawals': return <Withdrawals />;
       case 'supplier-returns': return <SupplierReturns />;
       case 'users': return <UserManagement />;
+      case 'exchanges': return <Exchanges />;
+      case 'photos': return <PhotoGallery />;
       default: return <Dashboard />;
     }
   };
@@ -48,9 +53,11 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <NotificationProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </NotificationProvider>
   );
 }
 

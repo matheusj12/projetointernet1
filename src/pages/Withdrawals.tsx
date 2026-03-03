@@ -3,7 +3,8 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { logActivity } from '../lib/activityLog';
 import { exportToExcel } from '../lib/exportExcel';
-import { Plus, Download, Camera, RotateCcw, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
+import { generateWithdrawalsPDF } from '../lib/pdfReport';
+import { Plus, Download, Camera, RotateCcw, ChevronDown, ChevronUp, AlertCircle, FileText } from 'lucide-react';
 
 interface Person { id: string; name: string; role: string; }
 interface CatalogItem { id: string; name: string; unit: string; }
@@ -195,6 +196,10 @@ export default function Withdrawals() {
         );
     };
 
+    const handleExportPDF = async () => {
+        await generateWithdrawalsPDF();
+    };
+
     const statusBadge = (s: string) => {
         if (s === 'returned') return <span className="badge badge-green">✅ Devolvido</span>;
         if (s === 'partial') return <span className="badge badge-yellow">⚠️ Parcial</span>;
@@ -211,6 +216,7 @@ export default function Withdrawals() {
                 <h1>📤 Saídas / Cautela</h1>
                 <div className="actions">
                     <button className="btn btn-ghost btn-sm" onClick={handleExport}><Download size={16} /> Excel</button>
+                    <button className="btn btn-ghost btn-sm" onClick={handleExportPDF} style={{ color: 'var(--accent-red)', borderColor: 'var(--accent-red)' }}><FileText size={16} /> Relatório PDF</button>
                     <button className="btn btn-primary" onClick={openNew}><Plus size={18} /> Nova Cautela</button>
                 </div>
             </div>

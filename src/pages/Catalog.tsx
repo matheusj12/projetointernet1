@@ -3,7 +3,8 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { logActivity } from '../lib/activityLog';
 import { exportToExcel } from '../lib/exportExcel';
-import { Plus, Edit2, Trash2, Download, Search, Package, X, Filter } from 'lucide-react';
+import { Plus, Edit2, Trash2, Download, Search, Package, X, Filter, History } from 'lucide-react';
+import ItemHistory from '../components/ItemHistory';
 
 interface CatalogItem {
     id: string;
@@ -21,6 +22,7 @@ export default function Catalog() {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState<CatalogItem | null>(null);
+    const [historyItem, setHistoryItem] = useState<CatalogItem | null>(null);
     const [search, setSearch] = useState('');
     const [filterCat, setFilterCat] = useState('');
     const [form, setForm] = useState({ name: '', description: '', unit: 'un', quantity_purchased: 0, category: '' });
@@ -213,8 +215,9 @@ export default function Catalog() {
                                     <td>{item.category && <span className="badge badge-blue">{item.category}</span>}</td>
                                     <td>
                                         <div style={{ display: 'flex', gap: '4px' }}>
-                                            <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(item)}><Edit2 size={15} /></button>
-                                            <button className="btn btn-ghost btn-sm btn-icon" onClick={() => handleDelete(item)} style={{ color: 'var(--accent-red)' }}><Trash2 size={15} /></button>
+                                            <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setHistoryItem(item)} style={{ color: 'var(--accent-blue)' }} title="Histórico"><History size={15} /></button>
+                                            <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(item)} title="Editar"><Edit2 size={15} /></button>
+                                            <button className="btn btn-ghost btn-sm btn-icon" onClick={() => handleDelete(item)} style={{ color: 'var(--accent-red)' }} title="Excluir"><Trash2 size={15} /></button>
                                         </div>
                                     </td>
                                 </tr>
@@ -268,6 +271,14 @@ export default function Catalog() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {historyItem && (
+                <ItemHistory
+                    itemId={historyItem.id}
+                    itemName={historyItem.name}
+                    onClose={() => setHistoryItem(null)}
+                />
             )}
 
             {toast && <div className={`toast toast-${toast.type}`}>{toast.msg}</div>}

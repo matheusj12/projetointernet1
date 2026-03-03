@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../lib/auth';
 import {
     LayoutDashboard, Package, Users, PackagePlus, PackageMinus,
-    RotateCcw, LogOut, Menu, X, ChevronRight, Shield
+    RotateCcw, LogOut, Menu, X, ChevronRight, Shield, ArrowLeftRight, Camera, Image as ImageIcon
 } from 'lucide-react';
 import './Layout.css';
 
@@ -12,13 +12,25 @@ interface LayoutProps {
     onNavigate: (page: string) => void;
 }
 
-const NAV_ITEMS = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'catalog', label: 'Catálogo', icon: Package },
-    { id: 'people', label: 'Pessoas', icon: Users },
-    { id: 'receipts', label: 'Entradas', icon: PackagePlus },
-    { id: 'withdrawals', label: 'Saídas', icon: PackageMinus },
-    { id: 'supplier-returns', label: 'Devoluções', icon: RotateCcw },
+const NAV_GROUPS = [
+    {
+        label: 'Visão Geral',
+        items: [
+            { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+            { id: 'catalog', label: 'Catálogo', icon: Package },
+        ]
+    },
+    {
+        label: 'Operações',
+        items: [
+            { id: 'people', label: 'Pessoas / Técnicos', icon: Users },
+            { id: 'receipts', label: 'Entradas', icon: PackagePlus },
+            { id: 'withdrawals', label: 'Saídas', icon: PackageMinus },
+            { id: 'supplier-returns', label: 'Devoluções', icon: RotateCcw },
+            { id: 'exchanges', label: 'Trocas', icon: ArrowLeftRight },
+            { id: 'photos', label: 'Diário de Fotos', icon: ImageIcon },
+        ]
+    }
 ];
 
 export default function Layout({ children, currentPage, onNavigate }: LayoutProps) {
@@ -52,27 +64,35 @@ export default function Layout({ children, currentPage, onNavigate }: LayoutProp
                 </div>
 
                 <nav className="sidebar-nav">
-                    {NAV_ITEMS.map(item => (
-                        <button
-                            key={item.id}
-                            className={`nav-item ${currentPage === item.id ? 'active' : ''}`}
-                            onClick={() => { onNavigate(item.id); setSidebarOpen(false); }}
-                        >
-                            <item.icon size={20} />
-                            <span>{item.label}</span>
-                            {currentPage === item.id && <ChevronRight size={16} className="nav-arrow" />}
-                        </button>
+                    {NAV_GROUPS.map((group, groupIdx) => (
+                        <div key={groupIdx} className="nav-group">
+                            <div className="nav-section-label">{group.label}</div>
+                            {group.items.map(item => (
+                                <button
+                                    key={item.id}
+                                    className={`nav-item ${currentPage === item.id ? 'active' : ''}`}
+                                    onClick={() => { onNavigate(item.id); setSidebarOpen(false); }}
+                                >
+                                    <item.icon size={20} />
+                                    <span>{item.label}</span>
+                                    {currentPage === item.id && <ChevronRight size={16} className="nav-arrow" />}
+                                </button>
+                            ))}
+                        </div>
                     ))}
+
                     {user?.role === 'admin' && (
-                        <button
-                            className={`nav-item ${currentPage === 'users' ? 'active' : ''}`}
-                            onClick={() => { onNavigate('users'); setSidebarOpen(false); }}
-                            style={{ marginTop: '8px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}
-                        >
-                            <Shield size={20} />
-                            <span>Usuários</span>
-                            {currentPage === 'users' && <ChevronRight size={16} className="nav-arrow" />}
-                        </button>
+                        <div className="nav-group" style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--border-color)' }}>
+                            <div className="nav-section-label">Administração</div>
+                            <button
+                                className={`nav-item ${currentPage === 'users' ? 'active' : ''}`}
+                                onClick={() => { onNavigate('users'); setSidebarOpen(false); }}
+                            >
+                                <Shield size={20} />
+                                <span>Usuários</span>
+                                {currentPage === 'users' && <ChevronRight size={16} className="nav-arrow" />}
+                            </button>
+                        </div>
                     )}
                 </nav>
 
@@ -98,16 +118,22 @@ export default function Layout({ children, currentPage, onNavigate }: LayoutProp
 
             {/* Bottom nav on mobile */}
             <nav className="bottom-nav">
-                {NAV_ITEMS.slice(0, 5).map(item => (
-                    <button
-                        key={item.id}
-                        className={`bottom-nav-item ${currentPage === item.id ? 'active' : ''}`}
-                        onClick={() => onNavigate(item.id)}
-                    >
-                        <item.icon size={20} />
-                        <span>{item.label}</span>
-                    </button>
-                ))}
+                <button className={`bottom-nav-item ${['dashboard', 'catalog'].includes(currentPage) ? 'active' : ''}`} onClick={() => onNavigate('dashboard')}>
+                    <LayoutDashboard size={20} />
+                    <span>Visão</span>
+                </button>
+                <button className={`bottom-nav-item ${currentPage === 'withdrawals' ? 'active' : ''}`} onClick={() => onNavigate('withdrawals')}>
+                    <PackageMinus size={20} />
+                    <span>Saídas</span>
+                </button>
+                <button className={`bottom-nav-item ${currentPage === 'receipts' ? 'active' : ''}`} onClick={() => onNavigate('receipts')}>
+                    <PackagePlus size={20} />
+                    <span>Entradas</span>
+                </button>
+                <button className={`bottom-nav-item ${['supplier-returns', 'exchanges', 'photos'].includes(currentPage) ? 'active' : ''}`} onClick={() => setSidebarOpen(true)}>
+                    <Menu size={20} />
+                    <span>Mais</span>
+                </button>
             </nav>
         </div>
     );

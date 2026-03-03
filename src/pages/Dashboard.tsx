@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { exportToExcel } from '../lib/exportExcel';
-import { Download, Package, Warehouse, Truck, AlertTriangle, Clock, Filter } from 'lucide-react';
+import { generateInventoryPDF } from '../lib/pdfReport';
+import { Download, Package, Warehouse, Truck, AlertTriangle, Clock, Filter, FileText } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 interface ItemStatus {
     id: string;
@@ -134,6 +136,28 @@ export default function Dashboard() {
         );
     };
 
+    const handleExportPDF = async () => {
+        await generateInventoryPDF();
+    };
+
+    // Chart Data
+    const COLORS = ['#38bdf8', '#34d399', '#f59e0b', '#ef4444', '#a78bfa', '#fb923c', '#4ade80', '#60a5fa'];
+
+    const categoryData = categories.map(cat => ({
+        name: cat || 'Sem Categoria',
+        value: items.filter(i => i.category === cat).reduce((s, i) => s + i.in_stock, 0)
+    })).filter(d => d.value > 0).sort((a, b) => b.value - a.value);
+
+    // Top 5 em campo
+    const topInFieldData = [...items]
+        .sort((a, b) => b.in_field - a.in_field)
+        .slice(0, 5)
+        .map(i => ({
+            name: i.name.length > 20 ? i.name.substring(0, 20) + '...' : i.name,
+            quantidade: i.in_field
+        }))
+        .filter(d => d.quantidade > 0);
+
     const actionLabel = (action: string, entity: string) => {
         const actions: Record<string, string> = { create: 'criou', update: 'atualizou', delete: 'removeu' };
         const entities: Record<string, string> = {
@@ -156,6 +180,7 @@ export default function Dashboard() {
                 <h1>📊 Dashboard</h1>
                 <div className="actions">
                     <button className="btn btn-ghost btn-sm" onClick={handleExport}><Download size={16} /> Excel</button>
+                    <button className="btn btn-ghost btn-sm" onClick={handleExportPDF} style={{ color: 'var(--accent-red)', borderColor: 'var(--accent-red)' }}><FileText size={16} /> Relatório PDF</button>
                 </div>
             </div>
 
@@ -185,6 +210,46 @@ export default function Dashboard() {
                     <div className="stat-icon" style={{ background: 'rgba(251,146,60,0.15)' }}><Clock size={20} color="var(--accent-orange)" /></div>
                     <div className="stat-value" style={{ color: 'var(--accent-orange)' }}>{totals.pending}</div>
                     <div className="stat-label">Pend. Entrega</div>
+                </div>
+            </div>
+
+            {/* Charts Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '24px' }}>
+                <div className="card" style={{ padding: '20px' }}>
+                    <h3 style={{ fontSize: '15px', color: 'var(--text-secondary)', marginBottom: '16px', fontWeight: 600 }}>📦 Distribuição em Estoque</h3>
+                    {categoryData.length > 0 ? (
+                        <div style={{ width: '100%', height: '250px' }}>
+                            <ResponsiveContainer>
+                                <PieChart>
+                                    <Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} paddingAngle={5}>
+                                        {categoryData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                                    </Pie>
+                                    <RechartsTooltip contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '8px', color: '#fff' }} itemStyle={{ color: '#fff' }} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    ) : (
+                        <div className="empty-state" style={{ padding: '40px' }}><p>Sem dados para exibir</p></div>
+                    )}
+                </div>
+
+                <div className="card" style={{ padding: '20px' }}>
+                    <h3 style={{ fontSize: '15px', color: 'var(--text-secondary)', marginBottom: '16px', fontWeight: 600 }}>🚚 Top Itens em Campo</h3>
+                    {topInFieldData.length > 0 ? (
+                        <div style={{ width: '100%', height: '250px' }}>
+                            <ResponsiveContainer>
+                                <BarChart data={topInFieldData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border-color)" />
+                                    <XAxis type="number" stroke="var(--text-secondary)" fontSize={12} />
+                                    <YAxis dataKey="name" type="category" width={100} stroke="var(--text-secondary)" fontSize={11} />
+                                    <RechartsTooltip cursor={{ fill: 'var(--bg-card-hover)' }} contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '8px', color: '#fff' }} />
+                                    <Bar dataKey="quantidade" fill="var(--accent-purple)" radius={[0, 4, 4, 0]} barSize={20} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    ) : (
+                        <div className="empty-state" style={{ padding: '40px' }}><p>Nenhum item em campo</p></div>
+                    )}
                 </div>
             </div>
 
