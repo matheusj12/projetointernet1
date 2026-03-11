@@ -431,8 +431,7 @@ export default function PhotoGallery() {
                                 disabled={saving}
                             >
                                 {saving ? '⏳ Salvando...' : 'Salvar Registro'}
-                            </button>
-                        </div>
+                            </button>                        </div>
                     </div>
                 </div>
             )}
